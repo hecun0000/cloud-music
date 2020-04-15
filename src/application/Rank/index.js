@@ -3,20 +3,22 @@ import { connect } from "react-redux";
 import { getRankList } from "./store";
 import { List, ListItem, SongList, Container } from './style'
 import Scroll from '../../baseUI/scroll';
-import { filterIndex, filterIdx } from '../../api/utils'
+import { filterIndex } from '../../api/utils'
 import Loading from '../../baseUI/loading/index';
 import { renderRoutes } from 'react-router-config'
 import { EnterLoading } from './../Singers/style';
 
 function Rank(props) {
-  const { rankList: list, loading } = props;
+  const { rankList: list, loading  } = props;
 
-  const { getRankListDispatch } = props;
+  const { getRankListDataDispatch } = props;
 
   let rankList = list ? list.toJS() : [];
 
   useEffect(() => {
-    getRankListDispatch()
+    if(!rankList.length){
+      getRankListDataDispatch();
+    }
   }, [])
 
   const enterDetail = (detail) => {
@@ -92,7 +94,7 @@ const mapStateToProps = state => ({
 
 const mapDispatchToProps = (dispatch) => {
   return {
-    getRankListDispatch() {
+    getRankListDataDispatch() {
       dispatch(getRankList());
     }
   }
