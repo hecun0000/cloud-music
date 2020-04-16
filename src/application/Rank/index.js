@@ -9,14 +9,14 @@ import { renderRoutes } from 'react-router-config'
 import { EnterLoading } from './../Singers/style';
 
 function Rank(props) {
-  const { rankList: list, loading  } = props;
+  const { rankList: list, loading, songsCount } = props;
 
   const { getRankListDataDispatch } = props;
 
   let rankList = list ? list.toJS() : [];
 
   useEffect(() => {
-    if(!rankList.length){
+    if (!rankList.length) {
       getRankListDataDispatch();
     }
   }, [])
@@ -69,7 +69,7 @@ function Rank(props) {
 
 
   return (
-    <Container>
+    <Container play={songsCount}>
       <Scroll>
         <div>
           <h1 className="offical" style={displayStyle}> 官方榜 </h1>
@@ -90,6 +90,7 @@ const mapStateToProps = state => ({
   // 不然每次 diff 比对 props 的时候都是不一样的引用，还是导致不必要的重渲染，属于滥用 immutable
   rankList: state.getIn(['rank', 'rankList']),
   loading: state.getIn(['rank', 'loading']),
+  songsCount: state.getIn(['player', 'playList']).size
 })
 
 const mapDispatchToProps = (dispatch) => {

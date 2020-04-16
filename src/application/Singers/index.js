@@ -24,7 +24,7 @@ import { renderRoutes } from 'react-router-config'
 
 function Singers(props) {
 
-  const { category, alpha, singerList, enterLoading, pullUpLoading, pullDownLoading, pageCount } = props;
+  const { songsCount, category, alpha, singerList, enterLoading, pullUpLoading, pullDownLoading, pageCount } = props;
 
   const { changeCategoryDispatch, changeAlphaDispatch, getHotSingerDispatch, updateDispatch, pullDownRefreshDispatch, pullUpRefreshDispatch } = props;
 
@@ -33,7 +33,7 @@ function Singers(props) {
     if(!singerList.length && !category && !alpha) {
       getHotSingerDispatch();
     }
-  }, [])
+  }, [alpha, category, getHotSingerDispatch, singerList.length])
 
   const handleUpdateCatetory = val => {
     changeCategoryDispatch(val)
@@ -87,7 +87,7 @@ function Singers(props) {
         <Horizen list={categoryTypes} title={"分类 (默认热门):"} handleClick={handleUpdateCatetory} oldVal={category}></Horizen>
         <Horizen list={alphaTypes} title={"首字母:"} handleClick={handleUpdateAlpha} oldVal={alpha}></Horizen>
       </NavContainer>
-      <ListContainer>
+      <ListContainer songsCount={songsCount}>
         <Scroll
           onScroll={forceCheck}
           pullUp={handlePullUp}
@@ -111,7 +111,8 @@ const mapStateToProps = (state) => ({
   enterLoading: state.getIn(['singers', 'enterLoading']),     //控制进场Loading
   pullUpLoading: state.getIn(['singers', 'pullUpLoading']),   //控制上拉加载动画
   pullDownLoading: state.getIn(['singers', 'pullDownLoading']), //控制下拉加载动画
-  pageCount: state.getIn(['singers', 'pageCount'])            //这里是当前页数，我们即将实现分页功能
+  pageCount: state.getIn(['singers', 'pageCount']),            //这里是当前页数，我们即将实现分页功能
+  songsCount: state.getIn (['player', 'playList']).size
 })
 
 const mapDispatchToProps = (dispatch) => {

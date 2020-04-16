@@ -4,10 +4,22 @@ import { Container, ImgWrapper, CollectButton, SongListWrapper, BgLayer } from "
 import Headers from '../../baseUI/header'
 import Scroll from '../../baseUI/scroll'
 import SongsList from '../SongList'
-import { HEADER_HEIGHT } from "./../../api/config";
+import { HEADER_HEIGHT } from "./../../api/config"
+import { connect } from 'react-redux'
+import { getSingerInfo, changeEnterLoading } from "./store/actionCreators"
+import Loading from "./../../baseUI/loading/index";
+import MusicNote from "../../baseUI/music-note/index";
+
+
 
 function Singer(props) {
-  // const { } = props
+  const {
+    artist: immutableArtist,
+    songs: immutableSongs,
+    loading,
+    play
+  } = props;
+  const { getSingerDataDispatch } = props
   const [showStatus, setShowStatus] = useState(true)
 
   const collectButton = useRef();
@@ -17,9 +29,13 @@ function Singer(props) {
   const header = useRef();
   const layer = useRef();
   const OFFSET = 5;
+
   useEffect(() => {
     const id = props.match.params.id;
-    // getSingerDataDispatch(id);
+    getSingerDataDispatch(id);
+  }, [])
+
+  useEffect(() => {
     let h = imageWrapper.current.offsetHeight;
     initialHeight.current = h;
     songScrollWrapper.current.style.top = `${h - OFFSET}px`;
@@ -28,32 +44,15 @@ function Singer(props) {
     songScroll.current.refresh();
   }, []);
 
+  const artist = immutableArtist.toJS();
+  const songs = immutableSongs.toJS();
+
   const setShowStatusFalse = useCallback(() => {
     setShowStatus(false);
   }, []);
 
   // 图片初始高度
   const initialHeight = useRef(0);
-  const artist = {
-    picUrl: "https://p2.music.126.net/W__FCWFiyq0JdPtuLJoZVQ==/109951163765026271.jpg",
-    name: "薛之谦",
-    hotSongs: [
-      {
-        name: "我好像在哪见过你",
-        ar: [{ name: "薛之谦" }],
-        al: {
-          name: "薛之谦专辑"
-        }
-      },
-      {
-        name: "我好像在哪见过你",
-        ar: [{ name: "薛之谦" }],
-        al: {
-          name: "薛之谦专辑"
-        }
-      }
-    ]
-  };
 
   const handleScroll = pos => {
     let height = initialHeight.current;
@@ -93,7 +92,11 @@ function Singer(props) {
       imageDOM.style.zIndex = 99;
     }
   };
+  const musicNoteRef = useRef();
 
+  const musicAnimation = (x, y) => {
+    musicNoteRef.current.startAnimation({ x, y });
+  };
   return (
     <CSSTransition
       in={showStatus}
@@ -103,7 +106,7 @@ function Singer(props) {
       unmountOnExit
       onExited={() => props.history.goBack()}
     >
-      <Container>
+      <Container play={play}>
         <Headers handleClick={setShowStatusFalse}
           title={artist.name} ref={header}></Headers>
         <ImgWrapper ref={imageWrapper} bgUrl={artist.picUrl}>
@@ -117,14 +120,37 @@ function Singer(props) {
         <SongListWrapper ref={songScrollWrapper}>
           <Scroll ref={songScroll} onScroll={handleScroll} >
             <SongsList
-              songs={artist.hotSongs}
+              songs={songs}
               showCollect={false}
+              musicAnimation={musicAnimation}
             ></SongsList>
           </Scroll>
         </SongListWrapper>
+        {loading ? (<Loading></Loading>) : null}
+        <MusicNote ref={musicNoteRef}></MusicNote>
       </Container>
     </CSSTransition>
   )
 }
 
-export default memo(Singer)
+// 将store 中的值映射到 state 中
+// 映射 Redux 全局的 state 到组件的 props 上
+const mapStateToProps = state => ({
+  artist: state.getIn(["singerInfo", "artist"]),
+  songs: state.getIn(["singerInfo", "songsOfArtist"]),
+  loading: state.getIn(["singerInfo", "loading"]),
+  play: state.getIn (['player', 'playList']).size
+});
+// 映射 dispatch 到 props 上
+const mapDispatchToProps = dispatch => {
+  return {
+    getSingerDataDispatch(id) {
+      dispatch(changeEnterLoading(true));
+      dispatch(getSingerInfo(id));
+    }
+  };
+};
+
+
+
+export default connect(mapStateToProps, mapDispatchToProps)(memo(Singer))
