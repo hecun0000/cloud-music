@@ -9,12 +9,15 @@ import Scroll from '../../../baseUI/scroll'
 import Confirm from './../../../baseUI/confirm/index';
 
 function PlayList(props) {
-  const { showPlayList, mode, currentSong, playList, currentIndex } = props;
+  const { showPlayList, mode, currentSong: immutableCurrentSong, playList: immutablePlayList, currentIndex, sequencePlayList: immutableSequencePlayList } = props;
   const { togglePlayListDispatch, changeCurrentIndexDispatch } = props;
   const playListRef = useRef();
   const listWrapperRef = useRef();
   const transform = prefixStyle("transform");
   const [isShow, setIsShow] = useState(false)
+  const currentSong = immutableCurrentSong.toJS();
+  const playList = immutablePlayList.toJS();
+  const sequencePlayList = immutableSequencePlayList.toJS();
 
   const onEnterCB = useCallback(() => {
     // 让列表显示
@@ -95,6 +98,51 @@ function PlayList(props) {
     clearDispatch();
   }
 
+  const [canTouch, setCanTouch] = useState(true);
+
+  const listContentRef = useRef();
+  const handleScroll = (pos) => {
+    // 只有当内容偏移量为 0 的时候才能下滑关闭 PlayList。否则一边内容在移动，一边列表在移动，出现 bug
+    let state = pos.y === 0;
+    setCanTouch(state);
+  }
+
+  //touchStart 后记录 y 值
+  const [startY, setStartY] = useState(0);
+  //touchStart 事件是否已经被触发
+  const [initialed, setInitialed] = useState(0);
+  // 用户下滑的距离
+  const [distance, setDistance] = useState(0);
+
+  const handleTouchStart = (e) => {
+    if (!canTouch || initialed) return;
+    listWrapperRef.current.style["transition"] = "";
+    setStartY(e.nativeEvent.touches[0].pageY);// 记录 y 值
+    setInitialed(true);
+  };
+
+  const handleTouchMove = (e) => {
+    if (!canTouch || !initialed) return;
+    let distance = e.nativeEvent.touches[0].pageY - startY;
+    if (distance < 0) return;
+    setDistance(distance);// 记录下滑距离
+    listWrapperRef.current.style.transform = `translate3d(0, ${distance} px, 0)`;
+  };
+
+  const handleTouchEnd = (e) => {
+    setInitialed(false);
+    // 这里设置阈值为 150px
+    if (distance >= 150) {
+      // 大于 150px 则关闭 PlayList
+      togglePlayListDispatch(false);
+    } else {
+      // 否则反弹回去
+      listWrapperRef.current.style["transition"] = "all 0.3s";
+      listWrapperRef.current.style[transform] = `translate3d(0px, 0px, 0px)`;
+    }
+  };
+
+
   return (
     <CSSTransition
       in={showPlayList}
@@ -110,7 +158,10 @@ function PlayList(props) {
         style={isShow === true ? { display: "block" } : { display: "none" }}
         onClick={() => togglePlayListDispatch(false)}
       >
-        <div className="list_wrapper" ref={listWrapperRef} onClick={e => e.stopPropagation()}>
+        <div className="list_wrapper" ref={listWrapperRef} onClick={e => e.stopPropagation()}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}>
           <ListHeader>
             <h1 className="title">
               {getPlayMode()}
@@ -118,7 +169,9 @@ function PlayList(props) {
             </h1>
           </ListHeader>
           <ScrollWrapper>
-            <Scroll>
+            <Scroll ref={listContentRef}
+              onScroll={pos => handleScroll(pos)}
+              bounceTop={false}>
               <ListContent>
                 {
                   playList.map((item, index) => {
