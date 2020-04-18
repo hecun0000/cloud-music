@@ -80,7 +80,7 @@ function Player(props) {
     togglePlayingDispatch(true);// 播放状态
     setCurrentTime(0);// 从头开始播放
     setDuration((current.dt / 1000) | 0);// 时长
-  }, [playList, currentIndex]);
+  }, [playList, currentIndex, preSong.id, changeCurrentDispatch, togglePlayingDispatch]);
 
   useEffect(() => {
     playing ? audioRef.current.play() : audioRef.current.pause();
@@ -211,7 +211,7 @@ function Player(props) {
         onEnded={handleEnd}
         onError={handleError}
       ></audio>
-      <PlayList />
+      <PlayList clearPreSong={setPreSong.bind(null, {})}/>
       <Toast text={modeText} ref={toastRef}></Toast>
     </div>
   )

@@ -80,7 +80,7 @@ function NormalPlayer(props) {
     const cdWrapperDom = cdWrapperRef.current;
     cdWrapperDom.style.transition = "all 0.4s";
     const { x, y, scale } = _getPosAndScale();
-    cdWrapperDom.style[transform] = `translate3d(${x} px, ${y} px, 0) scale(${scale})`;
+    cdWrapperDom.style[transform] = `translate3d(${x}px, ${y} px, 0) scale(${scale})`;
   };
 
   const afterLeave = () => {

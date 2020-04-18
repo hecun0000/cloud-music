@@ -19,6 +19,9 @@ function PlayList(props) {
   const playList = immutablePlayList.toJS();
   const sequencePlayList = immutableSequencePlayList.toJS();
 
+  const { clearPreSong } = props;
+
+
   const onEnterCB = useCallback(() => {
     // 让列表显示
     setIsShow(true);
@@ -96,6 +99,8 @@ function PlayList(props) {
   const { clearDispatch } = props;
   const handleConfirmClear = () => {
     clearDispatch();
+     // 修复清空播放列表后点击同样的歌曲，播放器不出现的bug
+    clearPreSong();
   }
 
   const [canTouch, setCanTouch] = useState(true);
