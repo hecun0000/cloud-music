@@ -13,8 +13,10 @@ import MiniPlayer from './miniPlayer';
 import NormalPlayer from './normalPlayer';
 import { getSongUrl, isEmptyObject, shuffle, findIndex } from "../../api/utils";
 import { playMode } from '../../api/config';
+import { getLyricRequest } from '../../api/request';
 import Toast from "./../../baseUI/Toast/index";
 import PlayList from "./PlayList";
+import Lyric from './../../api/lyric-parser';
 
 function Player(props) {
   //目前播放时间
@@ -66,21 +68,20 @@ function Player(props) {
       !songReady.current// 标志位为 false
     )
       return;
-    let current = playList[currentIndex];
-    setPreSong(current);
-    songReady.current = false; // 把标志位置为 false, 表示现在新的资源没有缓冲完成，不能切歌
-    changeCurrentDispatch(current);// 赋值 currentSong
-    audioRef.current.src = getSongUrl(current.id);
-    setTimeout(() => {
-      // 注意，play 方法返回的是一个 promise 对象
-      audioRef.current.play().then(() => {
-        songReady.current = true;
-      });
-    });
-    togglePlayingDispatch(true);// 播放状态
-    setCurrentTime(0);// 从头开始播放
-    setDuration((current.dt / 1000) | 0);// 时长
-  }, [playList, currentIndex, preSong.id, changeCurrentDispatch, togglePlayingDispatch]);
+      songReady.current = false;
+      let current = playList[currentIndex];
+      changeCurrentDispatch(current);
+      setPreSong(current);
+      setPlayingLyric("");
+      audioRef.current.src = getSongUrl(current.id);
+      audioRef.current.autoplay = true;
+      // audioRef.current.playbackRate = speed;
+      togglePlayingDispatch(true);
+      getLyric(current.id);
+      setCurrentTime(0);
+      setDuration((current.dt / 1000) | 0);
+      // eslint-disable-next-line
+  }, [playList, currentIndex]);
 
   useEffect(() => {
     playing ? audioRef.current.play() : audioRef.current.pause();
@@ -89,6 +90,9 @@ function Player(props) {
   const clickPlaying = (e, state) => {
     e.stopPropagation();
     togglePlayingDispatch(state);
+    if (currentLyric.current) {
+      currentLyric.current.togglePlay(currentTime * 1000);
+    }
   };
 
   const updateTime = e => {
@@ -102,12 +106,18 @@ function Player(props) {
     if (!playing) {
       togglePlayingDispatch(true);
     }
+    if (currentLyric.current) {
+      currentLyric.current.seek(newTime * 1000);
+    }
   };
   //一首歌循环
   const handleLoop = () => {
     audioRef.current.currentTime = 0;
     changePlayingState(true);
     audioRef.current.play();
+    if (currentLyric.current) {
+      currentLyric.current.seek(0);
+    }
   };
 
   const handlePrev = () => {
@@ -168,8 +178,59 @@ function Player(props) {
 
   const handleError = () => {
     songReady.current = true;
-    // alert("播放出错");
+    alert("播放出错");
   };
+
+
+  // 歌词部分
+  const currentLyric = useRef();
+  const currentLineNum = useRef(0);
+  const [currentPlayingLyric, setPlayingLyric] = useState("");
+
+  const getLyric = id => {
+    let lyric = "";
+    if (currentLyric.current) {
+      currentLyric.current.stop();
+    }
+    // 避免songReady恒为false的情况
+    setTimeout(() => {
+      songReady.current = true;
+    }, 3000);
+    getLyricRequest(id)
+      .then(data => {
+        console.log(data)
+        lyric = data.lrc.lyric;
+        if (!lyric) {
+          currentLyric.current = null;
+          return;
+        }
+        currentLyric.current = new Lyric(lyric, handleLyric);
+        currentLyric.current.play();
+        currentLineNum.current = 0;
+        currentLyric.current.seek(0);
+
+      })
+      .catch(() => {
+        currentLyric.current = "";
+        songReady.current = true;
+        audioRef.current.play();
+      });
+  };
+
+  const handleLyric = ({ lineNum, txt }) => {
+    if (!currentLyric.current) return;
+    currentLineNum.current = lineNum;
+    setPlayingLyric(txt);
+  };
+  useEffect(() => {
+    if (!fullScreen) return;
+    if (currentLyric.current && currentLyric.current.lines.length) {
+      handleLyric({
+        lineNum: currentLineNum.current,
+        txt: currentLyric.current.lines[currentLineNum.current].txt
+      });
+    }
+  }, [fullScreen]);
 
 
   return (
@@ -202,6 +263,9 @@ function Player(props) {
           handlePrev={handlePrev}
           handleNext={handleNext}
           togglePlayList={togglePlayList}
+          currentLyric={currentLyric.current}
+          currentPlayingLyric={currentPlayingLyric}
+          currentLineNum={currentLineNum.current}
         />
       )
       }
@@ -211,7 +275,7 @@ function Player(props) {
         onEnded={handleEnd}
         onError={handleError}
       ></audio>
-      <PlayList clearPreSong={setPreSong.bind(null, {})}/>
+      <PlayList clearPreSong={setPreSong.bind(null, {})} />
       <Toast text={modeText} ref={toastRef}></Toast>
     </div>
   )

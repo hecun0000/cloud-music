@@ -1,16 +1,16 @@
 import React, { useRef, useState, useCallback } from 'react';
 import { connect } from "react-redux";
 import { PlayListWrapper, ScrollWrapper, ListHeader, ListContent } from './style';
-import { changeShowPlayList, changePlayMode, changePlayList, changeCurrentIndex, deleteSong, changeSequecePlayList, changeCurrentSong, changePlayingState } from '../store/actionCreators';
+import { changeShowPlayList, changePlayMode, changePlayList, changeCurrentIndex, deleteSong, changeSequecePlayList, changeCurrentSong, changePlayingState, changeFullScreen } from '../store/actionCreators';
 import { CSSTransition } from 'react-transition-group';
-import { prefixStyle, getName } from '../../../api/utils';
 import { playMode } from '../../../api/config';
 import Scroll from '../../../baseUI/scroll'
 import Confirm from './../../../baseUI/confirm/index';
+import { prefixStyle, getName, shuffle, findIndex } from './../../../api/utils';
 
 function PlayList(props) {
   const { showPlayList, mode, currentSong: immutableCurrentSong, playList: immutablePlayList, currentIndex, sequencePlayList: immutableSequencePlayList } = props;
-  const { togglePlayListDispatch, changeCurrentIndexDispatch } = props;
+  const { togglePlayListDispatch, changeCurrentIndexDispatch, changePlayListDispatch, changeModeDispatch } = props;
   const playListRef = useRef();
   const listWrapperRef = useRef();
   const transform = prefixStyle("transform");
@@ -75,7 +75,22 @@ function PlayList(props) {
   };
   const changeMode = (e) => {
     let newMode = (mode + 1) % 3;
-    // 具体逻辑比较复杂 后面来实现
+    if (newMode === 0) {
+      // 顺序模式
+      changePlayListDispatch(sequencePlayList);
+      let index = findIndex(currentSong, sequencePlayList);
+      changeCurrentIndexDispatch(index);
+    } else if (newMode === 1) {
+      // 单曲循环
+      changePlayListDispatch(sequencePlayList);
+    } else if (newMode === 2) {
+      // 随机播放
+      let newList = shuffle(sequencePlayList);
+      let index = findIndex(currentSong, newList);
+      changePlayListDispatch(newList);
+      changeCurrentIndexDispatch(index);
+    }
+    changeModeDispatch(newMode);
   };
 
 
@@ -99,7 +114,7 @@ function PlayList(props) {
   const { clearDispatch } = props;
   const handleConfirmClear = () => {
     clearDispatch();
-     // 修复清空播放列表后点击同样的歌曲，播放器不出现的bug
+    // 修复清空播放列表后点击同样的歌曲，播放器不出现的bug
     clearPreSong();
   }
 
@@ -252,6 +267,8 @@ const mapDispatchToProps = (dispatch) => {
       dispatch(changeCurrentSong({}));
       // 5. 重置播放状态
       dispatch(changePlayingState(false));
+      // 关闭全屏模式
+      dispatch(changeFullScreen(false));
     }
   }
 };
